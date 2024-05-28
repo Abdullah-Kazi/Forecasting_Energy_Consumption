@@ -5,17 +5,19 @@ import pickle
 import matplotlib.pyplot as plt
 
 # Function to load the trained models
-@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 
 def load_models():
     models = {}
     try:
-        for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:
-            with open(f'{model_name}.pkl', 'rb') as file:
+        model_names = ['XGBoost_model', 'Prophet_model', 'LightGBM_model']
+        for model_name in model_names:
+            with open(f'models/{model_name}.pkl', 'rb') as file:
                 models[model_name] = pickle.load(file)
-        return models, None  # Return models and 'None' for error
     except Exception as e:
-        return None, str(e)  # Return None for models and the error message
+        st.error(f"Failed to load model due to: {e}")
+        # Optionally, return models empty if any fails to ensure consistent return type
+    return models
 
 # Generate future dates based on user input
 def generate_future_dates(years, months):
