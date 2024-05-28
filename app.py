@@ -12,7 +12,6 @@ st.write("""
          helping businesses and consumers optimize their energy management.
          """)
 
-# Load trained models
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_models():
     models = {}
@@ -27,26 +26,24 @@ def load_models():
 
 models = load_models()
 
-
-# Sidebar for model selection and forecasting details
 st.sidebar.header('Forecast Settings')
 model_names = list(models.keys())
 selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', model_names)
 
-# Date range picker for forecast
 today = datetime.today().date()
 tomorrow = today + timedelta(days=1)
 start_date = st.sidebar.date_input('Start date', tomorrow)
 end_date = st.sidebar.date_input('End date', tomorrow + timedelta(days=30))
 if start_date > end_date:
     st.sidebar.error('Error: End date must fall after start date.')
-         
-# Sidebar option for selecting the aggregation frequency
+
 aggregation = st.sidebar.selectbox(
     'Choose Aggregation Level:',
     ['Hourly', 'Daily', 'Weekly', 'Monthly'],
     index=1  # Default to 'Daily'
 )
+
+cost_per_kwh = st.sidebar.number_input('Cost per kWh in $', value=0.10, min_value=0.01, max_value=1.00, step=0.01)
 
 def make_predictions(model, features):
     try:
@@ -65,7 +62,7 @@ def add_features(df):
     df['dayofmonth'] = df.index.day
     df['weekofyear'] = df.index.isocalendar().week
     return df
-         
+
 def generate_dates(start_date, end_date):
     dates = pd.date_range(start=start_date, end=end_date, freq='H')
     return dates
@@ -79,16 +76,19 @@ def prepare_features(dates):
 
 def aggregate_predictions(df, freq):
     if freq == 'Daily':
-        df = df.resample('D').sum()  # Summing up the predictions for each day
+        df = df.resample('D').sum()
     elif freq == 'Weekly':
-        df = df.resample('W').sum()  # Summing up the predictions for each week
+        df = df.resample('W').sum()
     elif freq == 'Monthly':
-        df = df.resample('M').sum()  # Summing up the predictions for each month
+        df = df.resample('M').sum()
     else:
-        df = df.resample('H').sum()  # Keeping hourly data as it is
+        df = df.resample('H').sum()
     return df
 
-# Button to generate and display forecast
+def calculate_costs(df):
+    df['Cost'] = df['Predicted Usage'] * cost_per_kwh
+    return df
+
 if st.sidebar.button('Generate Forecast'):
     dates = generate_dates(start_date, end_date)
     features = prepare_features(dates)
@@ -96,58 +96,24 @@ if st.sidebar.button('Generate Forecast'):
     dates, predictions = make_predictions(model, features)
 
     if dates is not None and predictions is not None:
-        # Create a DataFrame for plotting and manipulation
         forecast_df = pd.DataFrame({
             'Date': pd.to_datetime(dates),
             'Predicted Usage': predictions
         })
         forecast_df.set_index('Date', inplace=True)
-        
-        # Aggregate the data based on selected frequency
         aggregated_df = aggregate_predictions(forecast_df, aggregation)
+        cost_df = calculate_costs(aggregated_df)
 
-        # Display the forecast results
-        st.subheader('Forecast Results')
+        st.subheader('Forecast Results with Cost Analysis')
         plt.figure(figsize=(10, 5))
-        plt.plot(aggregated_df.index, aggregated_df['Predicted Usage'], label='Aggregated Energy Usage')
+        plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
         plt.xlabel('Date')
-        plt.ylabel('Energy Usage (kWh)')
+        plt.ylabel('Cost ($)')
         plt.title(f'Energy Usage Forecast from {start_date} to {end_date} - Aggregated {aggregation}')
         plt.legend()
         st.pyplot(plt)
-
-        # Display data in a table
-        aggregated_df.reset_index(inplace=True)  # Resetting index for better table display
-        st.write(aggregated_df)
+        st.write(cost_df)
     else:
         st.error("Failed to generate predictions. Please check the model and input features.")
 
-# Sidebar input for cost per kWh
-cost_per_kwh = st.sidebar.number_input('Cost per kWh in $', value=0.10, min_value=0.01, max_value=1.00, step=0.01)
-
-# Calculate monetary value of forecasted energy usage
-def calculate_costs(df):
-    df['Cost'] = df['Predicted Usage'] * cost_per_kwh
-    return df
-
-# Modify the display section to include cost calculations
-if dates is not None and predictions is not None:
-    forecast_df = pd.DataFrame({
-        'Date': pd.to_datetime(dates),
-        'Predicted Usage': predictions
-    })
-    forecast_df.set_index('Date', inplace=True)
-    aggregated_df = aggregate_predictions(forecast_df, aggregation)
-    cost_df = calculate_costs(aggregated_df)
-
-    # Displaying results
-    st.subheader('Forecast Results with Cost Analysis')
-    plt.figure(figsize=(10, 5))
-    plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
-    plt.xlabel('Date')
-    plt.ylabel('Cost ($)')
-    plt.title(f'Forecasted Energy Costs from {start_date} to {end_date} - Aggregated {aggregation}')
-    plt.legend()
-    st.pyplot(plt)
-    st.write(cost_df)
 
