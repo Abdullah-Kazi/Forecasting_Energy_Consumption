@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 @st.cache(allow_output_mutation=True)
 def load_models():
     models = {}
-    for model_name in ['XGBoost_model', 'Prophet_model', 'RandomForest_model']:  # Add more models as needed
+    for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:  # Add more models as needed
         with open(f'{model_name}.pkl', 'rb') as file:
             models[model_name] = pickle.load(file)
     return models
