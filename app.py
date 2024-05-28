@@ -6,11 +6,16 @@ import matplotlib.pyplot as plt
 
 # Function to load the trained models
 @st.cache(allow_output_mutation=True)
-def load_models():
+def load_model():
     models = {}
-    for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:  # Add more models as needed
-        with open(f'{model_name}.pkl', 'rb') as file:
-            models[model_name] = pickle.load(file)
+    try:
+        for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:
+            with open(f'{model_name}.pkl', 'rb') as file:
+                models[model_name] = pickle.load(file)
+    except ModuleNotFoundError as e:
+        st.error(f"Failed to load model due to missing module: {str(e)}")
+    except Exception as e:
+        st.error(f"An error occurred while loading the model: {str(e)}")
     return models
 
 # Generate future dates based on user input
