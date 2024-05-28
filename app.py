@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Function to load the trained models
 @st.cache(allow_output_mutation=True)
-def load_model():
+def load_models():
     models = {}
     try:
         for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:
