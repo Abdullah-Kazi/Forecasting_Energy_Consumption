@@ -122,4 +122,32 @@ if st.sidebar.button('Generate Forecast'):
     else:
         st.error("Failed to generate predictions. Please check the model and input features.")
 
+# Sidebar input for cost per kWh
+cost_per_kwh = st.sidebar.number_input('Cost per kWh in $', value=0.10, min_value=0.01, max_value=1.00, step=0.01)
+
+# Calculate monetary value of forecasted energy usage
+def calculate_costs(df):
+    df['Cost'] = df['Predicted Usage'] * cost_per_kwh
+    return df
+
+# Modify the display section to include cost calculations
+if dates is not None and predictions is not None:
+    forecast_df = pd.DataFrame({
+        'Date': pd.to_datetime(dates),
+        'Predicted Usage': predictions
+    })
+    forecast_df.set_index('Date', inplace=True)
+    aggregated_df = aggregate_predictions(forecast_df, aggregation)
+    cost_df = calculate_costs(aggregated_df)
+
+    # Displaying results
+    st.subheader('Forecast Results with Cost Analysis')
+    plt.figure(figsize=(10, 5))
+    plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
+    plt.xlabel('Date')
+    plt.ylabel('Cost ($)')
+    plt.title(f'Forecasted Energy Costs from {start_date} to {end_date} - Aggregated {aggregation}')
+    plt.legend()
+    st.pyplot(plt)
+    st.write(cost_df)
 
