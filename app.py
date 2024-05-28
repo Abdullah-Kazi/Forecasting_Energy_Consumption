@@ -17,7 +17,6 @@ def load_models():
     except Exception as e:
         return None, str(e)  # Return None for models and the error message
 
-models, error = load_models()
 # Generate future dates based on user input
 def generate_future_dates(years, months):
     end_date = datetime.now() + timedelta(days=(years * 365) + (months * 30))
