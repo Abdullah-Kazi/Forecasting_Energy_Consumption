@@ -6,12 +6,20 @@ import matplotlib.pyplot as plt
 
 # Load models
 @st.cache(allow_output_mutation=True)
-def load_models():
-    with open('XGBoost_model.pkl', 'rb') as f:
-        xgb_model = pickle.load(f)
-    return xgb_model
+def load_model():
+    try:
+        # Adjust the path according to your environment
+        with open('XGBoost_model.pkl', 'rb') as file:
+            model = pickle.load(file)
+        return model
+    except FileNotFoundError:
+        st.error("Model file not found.")
+        return None
+    except Exception as e:
+        st.error(f"Failed to load model: {str(e)}")
+        return None
 
-xgb_model = load_models()
+model = load_model()
 
 # App title
 st.title('Energy Usage Forecasting')
