@@ -23,10 +23,9 @@ st.write("""
 def load_models():
     models = {}
     try:
-        model_names = ['XGBoost_model', 'Prophet_model', 'LightGBM_model']
-        for model_name in model_names:
-            with open(f'{model_name}.pkl', 'rb') as file:
-                models[model_name] = pickle.load(file)
+        models['XGBoost_model'] = xgb.XGBRegressor()
+        models['Prophet_model'] = ProphetRegressor()
+        models['LightGBM_model'] = LGBMRegressor()
     except Exception as e:
         st.error(f"Failed to load model due to: {e}")
     return models
