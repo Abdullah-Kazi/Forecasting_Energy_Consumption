@@ -40,6 +40,13 @@ start_date = st.sidebar.date_input('Start date', tomorrow)
 end_date = st.sidebar.date_input('End date', tomorrow + timedelta(days=30))
 if start_date > end_date:
     st.sidebar.error('Error: End date must fall after start date.')
+         
+# Sidebar option for selecting the aggregation frequency
+aggregation = st.sidebar.selectbox(
+    'Choose Aggregation Level:',
+    ['Hourly', 'Daily', 'Weekly', 'Monthly'],
+    index=1  # Default to 'Daily'
+)
 
 def make_predictions(model, features):
     try:
@@ -70,24 +77,49 @@ def prepare_features(dates):
     df = add_features(df)
     return df
 
-# Button to generate forecast
+def aggregate_predictions(df, freq):
+    if freq == 'Daily':
+        df = df.resample('D').sum()  # Summing up the predictions for each day
+    elif freq == 'Weekly':
+        df = df.resample('W').sum()  # Summing up the predictions for each week
+    elif freq == 'Monthly':
+        df = df.resample('M').sum()  # Summing up the predictions for each month
+    else:
+        df = df.resample('H').sum()  # Keeping hourly data as it is
+    return df
+
+# Button to generate and display forecast
 if st.sidebar.button('Generate Forecast'):
     dates = generate_dates(start_date, end_date)
     features = prepare_features(dates)
     model = models[selected_model_name]
-    _, predictions = make_predictions(model, features)
+    dates, predictions = make_predictions(model, features)
 
-    # Display the forecast results
-    st.subheader('Forecast Results')
-    plt.figure(figsize=(10, 5))
-    plt.plot(dates, predictions, label='Predicted Energy Usage')
-    plt.xlabel('Date')
-    plt.ylabel('Energy Usage (kWh)')
-    plt.title(f'Energy Usage Forecast from {start_date} to {end_date}')
-    plt.legend()
-    st.pyplot(plt)
+    if dates is not None and predictions is not None:
+        # Create a DataFrame for plotting and manipulation
+        forecast_df = pd.DataFrame({
+            'Date': pd.to_datetime(dates),
+            'Predicted Usage': predictions
+        })
+        forecast_df.set_index('Date', inplace=True)
+        
+        # Aggregate the data based on selected frequency
+        aggregated_df = aggregate_predictions(forecast_df, aggregation)
 
-    # Display data in a table
-    results_df = pd.DataFrame({'Date': dates, 'Predicted Usage': predictions})
-    st.write(results_df)
+        # Display the forecast results
+        st.subheader('Forecast Results')
+        plt.figure(figsize=(10, 5))
+        plt.plot(aggregated_df.index, aggregated_df['Predicted Usage'], label='Aggregated Energy Usage')
+        plt.xlabel('Date')
+        plt.ylabel('Energy Usage (kWh)')
+        plt.title(f'Energy Usage Forecast from {start_date} to {end_date} - Aggregated {aggregation}')
+        plt.legend()
+        st.pyplot(plt)
+
+        # Display data in a table
+        aggregated_df.reset_index(inplace=True)  # Resetting index for better table display
+        st.write(aggregated_df)
+    else:
+        st.error("Failed to generate predictions. Please check the model and input features.")
+
 
