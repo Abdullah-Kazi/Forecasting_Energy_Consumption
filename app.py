@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
-from lightgbm import LGBMRegressor
 
 st.title('Energy Forecasting Demo')
 st.write("""
@@ -71,8 +70,7 @@ def prepare_features(dates):
     df = pd.DataFrame(dates, columns=['Datetime'])
     df['Datetime'] = pd.to_datetime(df['Datetime'])
     df.set_index('Datetime', inplace=True)
-    df = add_features(df)
-    return df
+    return add_features(df)
 
 def aggregate_predictions(df, freq):
     if freq == 'Daily':
@@ -102,18 +100,48 @@ if st.sidebar.button('Generate Forecast'):
         })
         forecast_df.set_index('Date', inplace=True)
         aggregated_df = aggregate_predictions(forecast_df, aggregation)
-        cost_df = calculate_costs(aggregated_df)
+        cost_df = calculate_costs(aggregated_df.copy())
 
+        # Plot for Energy Usage
+        st.subheader('Forecast Results for Energy Usage')
+        plt.figure(figsize=(10, 5))
+        plt.plot(aggregated_df.index, aggregated_df['Predicted Usage'], label='Energy Usage (kWh)')
+        plt.xlabel('Date')
+        plt.ylabel('Energy Usage (kWh)')
+        plt.title(f'Energy Usage from {start_date} to {end_date} - Aggregated {aggregation}')
+        plt.legend()
+        st.pyplot(plt)
+
+        # Plot for Cost
         st.subheader('Forecast Results with Cost Analysis')
         plt.figure(figsize=(10, 5))
         plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
         plt.xlabel('Date')
         plt.ylabel('Cost ($)')
-        plt.title(f'Energy Usage Forecast from {start_date} to {end_date} - Aggregated {aggregation}')
+        plt.title(f'Cost from {start_date} to {end_date} - Aggregated {aggregation}')
         plt.legend()
         st.pyplot(plt)
         st.write(cost_df)
     else:
         st.error("Failed to generate predictions. Please check the model and input features.")
 
+# Allow user uploads
+st.sidebar.header('Upload Your Data')
+st.sidebar.write("Please upload a CSV file with columns: Datetime, PJME_MW")
+uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 
+if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file)
+    st.write("Uploaded Data Preview (first 5 rows):")
+    st.write(data.head())
+
+    if st.sidebar.button('Predict Uploaded Data'):
+        try:
+            prepared_data = prepare_features(data['Datetime'])
+            prepared_data['PJME_MW'] = data['PJME_MW']
+            predictions = make_predictions(models[selected_model_name], prepared_data.drop(columns=['PJME_MW']))
+            prepared_data['Predictions'] = predictions[1]
+            st.write("Predictions on Uploaded Data:")
+            st.write(prepared_data)
+        except Exception as e:
+            st.error(f"Failed to predict on uploaded data: {str(e)}")
