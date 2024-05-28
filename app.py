@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
+from lightgbm import LGBMRegressor
 
 # Function to load the trained models
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
