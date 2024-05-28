@@ -3,88 +3,75 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
+from lightgbm import LGBMRegressor
 
-# Load and cache models
-@st.cache(allow_output_mutation=True)
+st.title('Energy Forecasting Demo')
+st.write("""
+         Welcome to our interactive demo showcasing our advanced forecasting capabilities using machine learning.
+         This tool demonstrates how we leverage data to provide accurate energy usage predictions, 
+         helping businesses and consumers optimize their energy management.
+         """)
+
+# Load trained models
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_models():
     models = {}
     try:
-        for model_name in ['XGBoost_model', 'Prophet_model', 'LightGBM_model']:
+        model_names = ['XGBoost_model', 'Prophet_model', 'LightGBM_model']
+        for model_name in model_names:
             with open(f'{model_name}.pkl', 'rb') as file:
                 models[model_name] = pickle.load(file)
     except Exception as e:
         st.error(f"Failed to load model due to: {e}")
     return models
 
-# Generate future dates
-def generate_future_dates(years, months):
-    end_date = datetime.now() + timedelta(days=(years * 365) + (months * 30))
-    future_dates = pd.date_range(start=datetime.now(), end=end_date, freq='H')
-    future_df = pd.DataFrame(future_dates, columns=['Datetime'])
-    future_df.set_index('Datetime', inplace=True)
-    return future_df
+models = load_models()
 
-# Add features to dates
-def add_features(df):
-    df['hour'] = df.index.hour
-    df['dayofweek'] = df.index.dayofweek
-    df['month'] = df.index.month
-    df['year'] = df.index.year
-    df['dayofyear'] = df.index.dayofyear
-    df['dayofmonth'] = df.index.day
-    df['weekofyear'] = df.index.isocalendar().week
+
+# Sidebar for model selection and forecasting details
+st.sidebar.header('Forecast Settings')
+model_names = list(models.keys())
+selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', model_names)
+
+# Date range picker for forecast
+today = datetime.today().date()
+tomorrow = today + timedelta(days=1)
+start_date = st.sidebar.date_input('Start date', tomorrow)
+end_date = st.sidebar.date_input('End date', tomorrow + timedelta(days=30))
+if start_date > end_date:
+    st.sidebar.error('Error: End date must fall after start date.')
+
+
+
+def generate_dates(start_date, end_date):
+    dates = pd.date_range(start=start_date, end=end_date, freq='H')
+    return dates
+
+def prepare_features(dates):
+    df = pd.DataFrame(dates, columns=['Datetime'])
+    df['Datetime'] = pd.to_datetime(df['Datetime'])
+    df.set_index('Datetime', inplace=True)
+    df = add_features(df)
     return df
 
-# Function to make predictions
-def make_predictions(model, features):
-    try:
-        predictions = model.predict(features)
-        return features.index, predictions
-    except Exception as e:
-        st.error(f"Error in making predictions: {str(e)}")
-        return None, None
-
-# Aggregation function
-def aggregate_predictions(dates, predictions, freq):
-    df = pd.DataFrame({'Date': dates, 'Predicted Energy Usage': predictions})
-    df.set_index('Date', inplace=True)
-    if freq == 'Daily':
-        resampled = df.resample('D').mean()
-    elif freq == 'Weekly':
-        resampled = df.resample('W').mean()
-    elif freq == 'Monthly':
-        resampled = df.resample('M').mean()
-    elif freq == 'Yearly':
-        resampled = df.resample('A').mean()
-    return resampled
-
-# Streamlit UI
-st.title('Energy Usage Forecasting')
-st.sidebar.header('Specify Forecast Details')
-models = load_models()
-model_names = list(models.keys())
-selected_model_name = st.sidebar.selectbox('Choose a model:', model_names)
-years = st.sidebar.number_input('Years into the future:', min_value=0, max_value=20, value=5)
-months = st.sidebar.number_input('Additional months:', min_value=0, max_value=11, value=2)
-frequency = st.sidebar.selectbox('Aggregate Frequency:', ['Daily', 'Weekly', 'Monthly', 'Yearly'])
-
-# Show forecast button
-if st.sidebar.button('Show Forecast'):
+# Button to generate forecast
+if st.sidebar.button('Generate Forecast'):
+    dates = generate_dates(start_date, end_date)
+    features = prepare_features(dates)
     model = models[selected_model_name]
-    future_df = generate_future_dates(years, months)
-    future_df = add_features(future_df)
-    dates, predictions = make_predictions(model, future_df)
-    if dates is not None and predictions is not None:
-        aggregated_data = aggregate_predictions(dates, predictions, frequency)
-        plt.figure(figsize=(10, 5))
-        plt.plot(aggregated_data.index, aggregated_data['Predicted Energy Usage'], label='Aggregated Energy Usage')
-        plt.xlabel('Date')
-        plt.ylabel('Energy Usage')
-        plt.title(f'Future Energy Usage Forecast - {frequency}')
-        plt.legend()
-        st.pyplot(plt)
-        st.write(f"Forecasted Energy Usage ({frequency}):")
-        st.dataframe(aggregated_data)
-    else:
-        st.error("Failed to generate predictions. Please check the model and input features.")
+    _, predictions = make_predictions(model, features)
+
+    # Display the forecast results
+    st.subheader('Forecast Results')
+    plt.figure(figsize=(10, 5))
+    plt.plot(dates, predictions, label='Predicted Energy Usage')
+    plt.xlabel('Date')
+    plt.ylabel('Energy Usage (kWh)')
+    plt.title(f'Energy Usage Forecast from {start_date} to {end_date}')
+    plt.legend()
+    st.pyplot(plt)
+
+    # Display data in a table
+    results_df = pd.DataFrame({'Date': dates, 'Predicted Usage': predictions})
+    st.write(results_df)
 
