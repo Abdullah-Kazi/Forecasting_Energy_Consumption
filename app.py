@@ -9,7 +9,7 @@ import xgboost as xgb
 from prophet import Prophet
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
-from lightgbm import LGBMRegressor
+from lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 
