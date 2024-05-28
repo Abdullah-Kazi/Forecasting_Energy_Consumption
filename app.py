@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Load models
 @st.cache(allow_output_mutation=True)
 def load_models():
-    with open('models/xgboost/xgboost_model.pkl', 'rb') as f:
+    with open('XGBoost_model.pkl', 'rb') as f:
         xgb_model = pickle.load(f)
     return xgb_model
 
