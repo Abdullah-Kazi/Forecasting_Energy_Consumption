@@ -4,13 +4,14 @@ from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 import xgboost as xgb
 from prophet import Prophet
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from lightgbm import LGBMRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
 
 st.title('Energy Forecasting Demo')
 st.write("""
