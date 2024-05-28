@@ -26,7 +26,7 @@ def load_models():
     try:
         models['XGBoost_model.pkl'] = xgb.XGBRegressor()
         models['Prophet_model.pkl'] = ProphetRegressor()
-        models['LightGBM_model.pkl'] = LGBMRegressor()
+        models['LightGBM_model.pkl'] = lightgbm.LGBMRegressor()
     except Exception as e:
         st.error(f"Failed to load model due to: {e}")
     return models
