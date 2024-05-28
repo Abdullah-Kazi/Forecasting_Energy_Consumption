@@ -46,8 +46,16 @@ def generate_future_dates(years, months):
 
 # Predict function
 def make_predictions(model, features):
-    predictions = model.predict(features)
-    return features.index, predictions
+    if model is None:
+        st.error("Model is not loaded.")
+        return pd.DataFrame(), pd.Series()
+    try:
+        predictions = model.predict(features)
+        return features.index, predictions
+    except Exception as e:
+        st.error(f"Error during prediction: {str(e)}")
+        return pd.DataFrame(), pd.Series()
+
 
 # Displaying the forecast
 if st.sidebar.button('Show Forecast'):
