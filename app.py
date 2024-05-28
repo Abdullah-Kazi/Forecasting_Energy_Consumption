@@ -4,14 +4,16 @@ from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
 
-# Function to load the trained model
+# Function to load the trained models
 @st.cache(allow_output_mutation=True)
-def load_model():
-    with open('XGBoost_model.pkl', 'rb') as file:
-        model = pickle.load(file)
-    return model
+def load_models():
+    models = {}
+    for model_name in ['XGBoost_model', 'Prophet_model', 'RandomForest_model']:  # Add more models as needed
+        with open(f'{model_name}.pkl', 'rb') as file:
+            models[model_name] = pickle.load(file)
+    return models
 
-# Function to generate future dates based on user input
+# Generate future dates based on user input
 def generate_future_dates(years, months):
     end_date = datetime.now() + timedelta(days=(years * 365) + (months * 30))
     future_dates = pd.date_range(start=datetime.now(), end=end_date, freq='H')
@@ -19,7 +21,7 @@ def generate_future_dates(years, months):
     future_df.set_index('Datetime', inplace=True)
     return future_df
 
-# Function to add necessary features to the future dates DataFrame
+# Add necessary features to the future dates DataFrame
 def add_features(df):
     df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
@@ -30,38 +32,33 @@ def add_features(df):
     df['weekofyear'] = df.index.isocalendar().week
     return df
 
-# Function to make predictions using the model and features DataFrame
+# Make predictions using the selected model and features DataFrame
 def make_predictions(model, features):
     try:
-        if set(model.get_booster().feature_names) != set(features.columns):
-            raise ValueError("Feature mismatch between the model and input data")
         predictions = model.predict(features)
         return features.index, predictions
     except Exception as e:
         st.error(f"Error in making predictions: {str(e)}")
         return None, None
 
-# Streamlit UI
+# Streamlit UI setup
 st.title('Energy Usage Forecasting')
 
 # Sidebar for user input
 st.sidebar.header('Specify Forecast Details')
+models = load_models()
+model_names = list(models.keys())
+selected_model_name = st.sidebar.selectbox('Choose a model:', model_names)
 years = st.sidebar.number_input('Years into the future:', min_value=0, max_value=20, value=5)
 months = st.sidebar.number_input('Additional months:', min_value=0, max_value=11, value=2)
 
-# Load the model
-model = load_model()
-
 # Button to show forecast
 if st.sidebar.button('Show Forecast'):
-    # Generate future dates and add features
+    model = models[selected_model_name]
     future_df = generate_future_dates(years, months)
     future_df = add_features(future_df)
-    
-    # Make predictions
     dates, predictions = make_predictions(model, future_df)
-    
-    # Plot the predictions
+
     if dates is not None and predictions is not None:
         plt.figure(figsize=(10, 5))
         plt.plot(dates, predictions, label='Forecasted Energy Usage')
@@ -70,5 +67,14 @@ if st.sidebar.button('Show Forecast'):
         plt.title('Future Energy Usage Forecast')
         plt.legend()
         st.pyplot(plt)
+
+        # Display predictions in a DataFrame
+        prediction_df = pd.DataFrame({
+            'Date': dates,
+            'Predicted Energy Usage': predictions
+        })
+        st.write("Forecasted Energy Usage:")
+        st.dataframe(prediction_df)
     else:
         st.error("Failed to generate predictions. Please check the model and input features.")
+
