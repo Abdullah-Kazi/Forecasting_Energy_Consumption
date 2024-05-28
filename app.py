@@ -21,6 +21,12 @@ st.sidebar.header('Specify Forecast Details')
 years = st.sidebar.number_input('Years into the future:', min_value=0, max_value=20, value=5)
 months = st.sidebar.number_input('Additional months:', min_value=0, max_value=11, value=2)
 
+def add_features(df):
+    df['dayofyear'] = df.index.dayofyear
+    df['dayofmonth'] = df.index.day
+    df['weekofyear'] = df.index.isocalendar().week
+    return df
+    
 # Functions to preprocess and add features
 def generate_future_dates(years, months):
     end_date = datetime.now() + timedelta(days=(years * 365) + (months * 30))
