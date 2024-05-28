@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Function to load the trained model
 @st.cache(allow_output_mutation=True)
 def load_model():
-    with open('models/xgboost_model.pkl', 'rb') as file:
+    with open('XGBoost_model.pkl', 'rb') as file:
         model = pickle.load(file)
     return model
 
