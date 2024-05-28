@@ -42,7 +42,12 @@ if start_date > end_date:
     st.sidebar.error('Error: End date must fall after start date.')
 
 
-
+def add_features(df):
+    df['dayofyear'] = df.index.dayofyear
+    df['dayofmonth'] = df.index.day
+    df['weekofyear'] = df.index.isocalendar().week
+    return df
+         
 def generate_dates(start_date, end_date):
     dates = pd.date_range(start=start_date, end=end_date, freq='H')
     return dates
