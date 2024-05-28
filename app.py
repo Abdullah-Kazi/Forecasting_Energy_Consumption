@@ -41,8 +41,19 @@ end_date = st.sidebar.date_input('End date', tomorrow + timedelta(days=30))
 if start_date > end_date:
     st.sidebar.error('Error: End date must fall after start date.')
 
+def make_predictions(model, features):
+    try:
+        predictions = model.predict(features)
+        return features.index, predictions
+    except Exception as e:
+        st.error(f"Error in making predictions: {str(e)}")
+        return None, None
 
 def add_features(df):
+    df['hour'] = df.index.hour
+    df['dayofweek'] = df.index.dayofweek
+    df['month'] = df.index.month
+    df['year'] = df.index.year
     df['dayofyear'] = df.index.dayofyear
     df['dayofmonth'] = df.index.day
     df['weekofyear'] = df.index.isocalendar().week
