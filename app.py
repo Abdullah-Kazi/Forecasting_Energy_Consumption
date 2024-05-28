@@ -23,9 +23,9 @@ st.write("""
 def load_models():
     models = {}
     try:
-        models['XGBoost_model'] = xgb.XGBRegressor()
-        models['Prophet_model'] = ProphetRegressor()
-        models['LightGBM_model'] = LGBMRegressor()
+        models['XGBoost_model.pkl'] = xgb.XGBRegressor()
+        models['Prophet_model.pkl'] = ProphetRegressor()
+        models['LightGBM_model.pkl'] = LGBMRegressor()
     except Exception as e:
         st.error(f"Failed to load model due to: {e}")
     return models
