@@ -97,7 +97,7 @@ if st.sidebar.button('Generate Future Forecast'):
         forecast_df = pd.DataFrame({
             'Predicted Energy Usage': predictions
         }, index=future_features.index)
-         st.write(forecast_df)
+             st.write(forecast_df)
 
         # Monetary Calculations
         forecast_df['Cost'] = forecast_df['Predicted Energy Usage'] * energy_rate
