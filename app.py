@@ -29,6 +29,20 @@ models = load_models()
 # Data Preprocessing Function
 def preprocess_data(df):
     df['Datetime'] = pd.to_datetime(df['Datetime'])
+    df.set_index('Datetime', inplace=True)  # Set 'Datetime' as the index if you want to use it directly from the index
+    df['hour'] = df.index.hour
+    df['dayofweek'] = df.index.dayofweek
+    df['month'] = df.index.month
+    df['year'] = df.index.year
+    df['dayofyear'] = df.index.dayofyear
+    df['dayofmonth'] = df.index.day
+    df['weekofyear'] = df.index.isocalendar().week
+    return df
+
+# Function to Generate Future Date Features
+def generate_future_dates(last_date, end_date):
+    dates = pd.date_range(start=last_date + timedelta(hours=1), end=end_date, freq='H')
+    df = pd.DataFrame(dates, columns=['Datetime'])
     df.set_index('Datetime', inplace=True)
     df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
@@ -38,6 +52,14 @@ def preprocess_data(df):
     df['dayofmonth'] = df.index.day
     df['weekofyear'] = df.index.isocalendar().week
     return df
+
+def make_predictions(model, features):
+    try:
+        predictions = model.predict(features)
+        return features.index, predictions
+    except Exception as e:
+        st.error(f"Error in making predictions: {str(e)}")
+        return None, None
 
 # Sidebar Elements
 st.sidebar.header('Upload Your Data')
@@ -75,6 +97,7 @@ if st.sidebar.button('Generate Future Forecast'):
         forecast_df = pd.DataFrame({
             'Predicted Energy Usage': predictions
         }, index=future_features.index)
+         st.write(forecast_df)
 
         # Monetary Calculations
         forecast_df['Cost'] = forecast_df['Predicted Energy Usage'] * energy_rate
