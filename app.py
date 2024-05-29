@@ -34,14 +34,13 @@ def load_models():
 models = load_models()
 
 st.sidebar.header('Upload Your Data')
-st.sidebar.write("Please upload a CSV file with columns: Datetime, PJME_MW")
+st.sidebar.write("Please upload a CSV file with columns: Datetime, Energy Consumption")
 uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     data['Datetime'] = pd.to_datetime(data['Datetime'])
-    st.write("Uploaded Data:")
-    st.write(data.head())
+
 else:
     st.sidebar.error("Please upload a CSV file to proceed.")
 
@@ -151,7 +150,7 @@ if uploaded_file is not None:
             prepared_data = data.copy()
             prepared_data.set_index('Datetime', inplace=True)
             prepared_data = add_features(prepared_data)
-            energy_column = data.columns[1]  # assuming the energy column is the second one
+            energy_column = data.columns[1]
             predictions = make_predictions(models[selected_model_name], prepared_data.drop(columns=[energy_column]))
             if predictions[0] is not None:
                 prepared_data['Predictions'] = predictions[1]
