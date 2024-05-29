@@ -24,15 +24,13 @@ st.write("""
 def load_models():
     models = {}
     try:
-        model_names = ['XGBoost_model', 'Linear Regression_model', 'LightGBM_model']
+        model_names = ['XGBoost_model', 'Linear Regression_model', 'LightGBM_model', 'Decision Tree_model', 'Random Forest_model', 'Prophet_model']
         for model_name in model_names:
             with open(f'{model_name}.pkl', 'rb') as file:
                 models[model_name] = pickle.load(file)
     except Exception as e:
         st.error(f"Failed to load model due to: {e}")
     return models
-
-models = load_models()
 
 models = load_models()
 
