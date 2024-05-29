@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
 from prophet import Prophet
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 import lightgbm as lgb
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
 
 st.title('Energy Forecasting Demo')
 st.write("""
@@ -40,11 +40,11 @@ uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     data['Datetime'] = pd.to_datetime(data['Datetime'])
-
-else:
-    st.sidebar.error("Please upload a CSV file to proceed.")
+    data.set_index('Datetime', inplace=True)
+    energy_column = data.columns[0]  # Dynamically identifying the energy column
 
 def add_features(df):
+    df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
     df['year'] = df.index.year
@@ -59,7 +59,6 @@ def generate_dates(start_date, end_date):
 
 def prepare_features(dates):
     df = pd.DataFrame(dates, columns=['Datetime'])
-    df['Datetime'] = pd.to_datetime(df['Datetime'])
     df.set_index('Datetime', inplace=True)
     return add_features(df)
 
@@ -146,10 +145,7 @@ if uploaded_file is not None:
 
     if st.sidebar.button('Predict Uploaded Data'):
         try:
-            prepared_data = data.copy()
-            prepared_data.set_index('Datetime', inplace=True)
-            prepared_data = add_features(prepared_data)
-            energy_column = data.columns[1]
+            prepared_data = add_features(data)
             predictions = make_predictions(models[selected_model_name], prepared_data.drop(columns=[energy_column]))
             if predictions[0] is not None:
                 prepared_data['Predictions'] = predictions[1]
@@ -157,4 +153,5 @@ if uploaded_file is not None:
                 st.write(prepared_data)
         except Exception as e:
             st.error(f"Failed to predict on uploaded data: {str(e)}")
+
 
