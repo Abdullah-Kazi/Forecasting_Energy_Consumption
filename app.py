@@ -4,11 +4,10 @@ from datetime import datetime, timedelta
 import pickle
 import matplotlib.pyplot as plt
 
-st.title('Energy Forecasting Demo')
+st.title('Energy Management Forecasting Tool')
 st.write("""
-         Welcome to our interactive demo showcasing our advanced forecasting capabilities using machine learning.
-         This tool demonstrates how we leverage data to provide accurate energy usage predictions,
-         helping businesses and consumers optimize their energy management.
+         Welcome to our advanced forecasting tool for energy management. 
+         This application provides future energy consumption predictions to help businesses optimize their energy strategies and reduce costs.
          """)
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
@@ -58,42 +57,77 @@ def make_predictions(model, features):
         st.error(f"Error in making predictions: {str(e)}")
         return None, None
 
+def aggregate_data(df, aggregation):
+    if aggregation == 'Hourly':
+        return df
+    elif aggregation == 'Daily':
+        return df.resample('D').sum()
+    elif aggregation == 'Weekly':
+        return df.resample('W').sum()
+    elif aggregation == 'Monthly':
+        return df.resample('M').sum()
+    elif aggregation == 'Yearly':
+        return df.resample('A').sum()
+
+def calculate_costs(df, cost_per_kwh):
+    df['Cost'] = df['Predicted Energy Usage'] * cost_per_kwh
+    return df
+
 st.sidebar.header('Upload Your Data')
 uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     data = preprocess_data(data)
+    
     st.sidebar.header('Forecast Settings')
     model_names = list(models.keys())
     selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', model_names)
+    aggregation = st.sidebar.selectbox(
+        'Choose Aggregation Level:',
+        ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly'],
+        index=0  # Default to 'Hourly'
+    )
+    cost_per_kwh = st.sidebar.number_input('Cost per kWh in $', value=0.10, min_value=0.01, max_value=1.00, step=0.01)
 
     last_date = data.index.max()
     end_date = st.sidebar.date_input('End Date for Prediction', last_date + timedelta(days=7), min_value=last_date + timedelta(days=1))
 
-    if st.sidebar.button('Generate Future Forecast'):
+    if st.sidebar.button('Generate Forecast'):
         future_features = generate_future_dates(last_date, end_date)
+        all_features = pd.concat([data, future_features], sort=False).fillna(0)  # Combining existing and future data
         model = models[selected_model_name]
         _, predictions = make_predictions(model, future_features)
 
         if predictions is not None:
-            forecast_df = pd.DataFrame({
-                'Predicted Energy Usage': predictions
-            }, index=future_features.index)
-            st.write(forecast_df)
+            all_features['Predicted Energy Usage'] = predictions
+            aggregated_df = aggregate_data(all_features[['Predicted Energy Usage']], aggregation)
+            cost_df = calculate_costs(aggregated_df.copy(), cost_per_kwh)
+            
+            st.write("Forecasted Energy Usage and Costs:")
+            st.dataframe(cost_df.style.format({'Predicted Energy Usage': "{:.2f}", 'Cost': "${:.2f}"}))
 
-            # Plotting results
-            st.subheader('Forecast Results for Future Energy Usage')
+            # Plot for Energy Usage
+            st.subheader('Forecast Results for Energy Usage')
             plt.figure(figsize=(10, 5))
-            plt.plot(forecast_df.index, forecast_df['Predicted Energy Usage'], label='Predicted Energy Usage (kWh)')
+            plt.plot(aggregated_df.index, aggregated_df['Predicted Energy Usage'], label='Energy Usage (kWh)')
             plt.xlabel('Date')
             plt.ylabel('Energy Usage (kWh)')
-            plt.title('Future Energy Usage Forecast')
+            plt.title(f'Energy Usage from {data.index.min()} to {end_date} - Aggregated {aggregation}')
+            plt.legend()
+            st.pyplot(plt)
+
+            # Plot for Cost
+            st.subheader('Forecast Results with Cost Analysis')
+            plt.figure(figsize=(10, 5))
+            plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
+            plt.xlabel('Date')
+            plt.ylabel('Cost ($)')
+            plt.title(f'Cost from {data.index.min()} to {end_date} - Aggregated {aggregation}')
             plt.legend()
             st.pyplot(plt)
         else:
             st.error("Failed to generate predictions. Please check the model and input features.")
 else:
     st.info('Please upload a CSV file to begin the forecasting process.')
-
 
