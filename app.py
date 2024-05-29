@@ -37,37 +37,36 @@ def preprocess_data(df):
     return df
 
 def generate_future_dates(last_date, end_date):
-    dates = pd.date_range(start=last_date + timedelta(hours=1), end=end_date, freq='H')
-    df = pd.DataFrame(dates, columns=['Datetime'])
-    df.set_index('Datetime', inplace=True)
-    df['hour'] = df.index.hour
-    df['dayofweek'] = df.index.dayofweek
-    df['month'] = df.index.month
-    df['year'] = df.index.year
-    df['dayofyear'] = df.index.dayofyear
-    df['dayofmonth'] = df.index.day
-    df['weekofyear'] = df.index.isocalendar().week
-    return df
+    date_range = pd.date_range(start=last_date + timedelta(hours=1), end=end_date, freq='H')
+    future_df = pd.DataFrame(index=date_range, columns=['hour', 'dayofweek', 'month', 'year', 'dayofyear', 'dayofmonth', 'weekofyear'])
+    future_df['hour'] = future_df.index.hour
+    future_df['dayofweek'] = future_df.index.dayofweek
+    future_df['month'] = future_df.index.month
+    future_df['year'] = future_df.index.year
+    future_df['dayofyear'] = future_df.index.dayofyear
+    future_df['dayofmonth'] = future_df.index.day
+    future_df['weekofyear'] = future_df.index.isocalendar().week
+    return future_df
 
-def make_predictions(model, features):
+def make_predictions(model, future_features):
     try:
-        predictions = model.predict(features)
-        return features.index, predictions
+        predictions = model.predict(future_features)
+        logging.info('Forecast completed successfully.')
+        return future_features.index, predictions
     except Exception as e:
-        st.error(f"Error in making predictions: {str(e)}")
+        logging.error(f'Failed to make forecast due to: {e}')
         return None, None
 
-def aggregate_data(df, aggregation):
-    if aggregation == 'Hourly':
-        return df
-    elif aggregation == 'Daily':
-        return df.resample('D').sum()
-    elif aggregation == 'Weekly':
-        return df.resample('W').sum()
-    elif aggregation == 'Monthly':
-        return df.resample('M').sum()
-    elif aggregation == 'Yearly':
-        return df.resample('A').sum()
+def aggregate_data(df, aggregation_level):
+    aggregation_dict = {
+        'Hourly': 'H',
+        'Daily': 'D',
+        'Weekly': 'W',
+        'Monthly': 'M',
+        'Yearly': 'Y'
+    }
+    return df.resample(aggregation_dict[aggregation_level]).sum()
+
 
 def calculate_costs(df, cost_per_kwh):
     df['Cost'] = df['Predicted Energy Usage'] * cost_per_kwh
@@ -79,7 +78,7 @@ uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     data = preprocess_data(data)
-    
+
     st.sidebar.header('Forecast Settings')
     model_names = list(models.keys())
     selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', model_names)
@@ -103,7 +102,7 @@ if uploaded_file is not None:
             all_features['Predicted Energy Usage'] = predictions
             aggregated_df = aggregate_data(all_features[['Predicted Energy Usage']], aggregation)
             cost_df = calculate_costs(aggregated_df.copy(), cost_per_kwh)
-            
+
             st.write("Forecasted Energy Usage and Costs:")
             st.dataframe(cost_df.style.format({'Predicted Energy Usage': "{:.2f}", 'Cost': "${:.2f}"}))
 
