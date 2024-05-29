@@ -37,13 +37,9 @@ st.sidebar.header('Upload Your Data')
 st.sidebar.write("Please upload a CSV file with columns: Datetime, Energy Consumption")
 uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
 
-if uploaded_file is not None:
-    data = pd.read_csv(uploaded_file)
-    data['Datetime'] = pd.to_datetime(data['Datetime'])
-    data.set_index('Datetime', inplace=True)
-    energy_column = data.columns[0]  # Dynamically identifying the energy column
-
-def add_features(df):
+def preprocess_data(df):
+    df['Datetime'] = pd.to_datetime(df['Datetime'])
+    df.set_index('Datetime', inplace=True)
     df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
@@ -53,14 +49,16 @@ def add_features(df):
     df['weekofyear'] = df.index.isocalendar().week
     return df
 
+if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file)
+    data = preprocess_data(data)
+    energy_column = data.columns[0]  # Dynamically identifying the energy column
+
+
 def generate_dates(start_date, end_date):
     dates = pd.date_range(start=start_date, end=end_date, freq='H')
     return dates
 
-def prepare_features(dates):
-    df = pd.DataFrame(dates, columns=['Datetime'])
-    df.set_index('Datetime', inplace=True)
-    return add_features(df)
 
 def make_predictions(model, features):
     try:
@@ -69,6 +67,8 @@ def make_predictions(model, features):
     except Exception as e:
         st.error(f"Error in making predictions: {str(e)}")
         return None, None
+             
+feature_names = ['hour', 'dayofweek', 'month', 'year', 'dayofyear', 'dayofmonth', 'weekofyear']  # Used for consistent feature handling
 
 def aggregate_predictions(df, freq):
     if freq == 'Daily':
@@ -109,7 +109,7 @@ if uploaded_file is not None:
         dates = generate_dates(start_date, end_date)
         features = prepare_features(dates)
         model = models[selected_model_name]
-        dates, predictions = make_predictions(model, features)
+        dates, predictions = make_predictions(model, feature_names)
 
         if dates is not None and predictions is not None:
             forecast_df = pd.DataFrame({
