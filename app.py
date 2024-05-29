@@ -51,10 +51,8 @@ def generate_future_dates(last_date, end_date):
 def make_predictions(model, future_features):
     try:
         predictions = model.predict(future_features)
-        logging.info('Forecast completed successfully.')
         return future_features.index, predictions
     except Exception as e:
-        logging.error(f'Failed to make forecast due to: {e}')
         return None, None
 
 def aggregate_data(df, aggregation_level):
