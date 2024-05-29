@@ -45,7 +45,6 @@ else:
     st.sidebar.error("Please upload a CSV file to proceed.")
 
 def add_features(df):
-    df['hour'] = df.index.hour
     df['dayofweek'] = df.index.dayofweek
     df['month'] = df.index.month
     df['year'] = df.index.year
