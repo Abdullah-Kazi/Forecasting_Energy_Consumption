@@ -1,21 +1,13 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import pickle
 import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-import xgboost as xgb
-from prophet import Prophet
-from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
-import lightgbm as lgb
 
 st.title('Energy Forecasting Demo')
 st.write("""
          Welcome to our interactive demo showcasing our advanced forecasting capabilities using machine learning.
-         This tool demonstrates how we leverage data to provide accurate energy usage predictions, 
+         This tool demonstrates how we leverage data to provide accurate energy usage predictions,
          helping businesses and consumers optimize their energy management.
          """)
 
@@ -33,10 +25,6 @@ def load_models():
 
 models = load_models()
 
-st.sidebar.header('Upload Your Data')
-st.sidebar.write("Please upload a CSV file with columns: Datetime, Energy Consumption")
-uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
-
 def preprocess_data(df):
     df['Datetime'] = pd.to_datetime(df['Datetime'])
     df.set_index('Datetime', inplace=True)
@@ -49,17 +37,6 @@ def preprocess_data(df):
     df['weekofyear'] = df.index.isocalendar().week
     return df
 
-if uploaded_file is not None:
-    data = pd.read_csv(uploaded_file)
-    data = preprocess_data(data)
-    energy_column = data.columns[0]  # Dynamically identifying the energy column
-
-
-def generate_dates(start_date, end_date):
-    dates = pd.date_range(start=start_date, end=end_date, freq='H')
-    return dates
-
-
 def make_predictions(model, features):
     try:
         predictions = model.predict(features)
@@ -67,91 +44,70 @@ def make_predictions(model, features):
     except Exception as e:
         st.error(f"Error in making predictions: {str(e)}")
         return None, None
-             
-feature_names = ['hour', 'dayofweek', 'month', 'year', 'dayofyear', 'dayofmonth', 'weekofyear']  # Used for consistent feature handling
-
-def aggregate_predictions(df, freq):
-    if freq == 'Daily':
-        df = df.resample('D').sum()
-    elif freq == 'Weekly':
-        df = df.resample('W').sum()
-    elif freq == 'Monthly':
-        df = df.resample('M').sum()
-    else:
-        df = df.resample('H').sum()
-    return df
 
 def calculate_costs(df, cost_per_kwh):
-    df['Cost'] = df['Predicted Usage'] * cost_per_kwh
+    df['Cost'] = df['Energy Consumption'] * cost_per_kwh
     return df
 
+st.sidebar.header('Upload Your Data')
+st.sidebar.write("Please upload a CSV file with columns: Datetime, Energy Consumption")
+uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
+
 if uploaded_file is not None:
-    st.sidebar.header('Forecast Settings')
-    model_names = list(models.keys())
-    selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', model_names)
+    data = pd.read_csv(uploaded_file)
+    data = preprocess_data(data)
 
-    today = datetime.today().date()
-    tomorrow = today + timedelta(days=1)
-    start_date = st.sidebar.date_input('Start date', tomorrow)
-    end_date = st.sidebar.date_input('End date', tomorrow + timedelta(days=30))
-    if start_date > end_date:
-        st.sidebar.error('Error: End date must fall after start date.')
-
-    aggregation = st.sidebar.selectbox(
-        'Choose Aggregation Level:',
-        ['Hourly', 'Daily', 'Weekly', 'Monthly'],
-        index=1  # Default to 'Daily'
-    )
-
+    st.sidebar.header('Prediction Settings')
+    selected_model_name = st.sidebar.selectbox('Choose a Forecasting Model:', list(models.keys()))
     cost_per_kwh = st.sidebar.number_input('Cost per kWh in $', value=0.10, min_value=0.01, max_value=1.00, step=0.01)
 
-    if st.sidebar.button('Generate Forecast'):
-        dates = generate_dates(start_date, end_date)
-        features = prepare_features(dates)
-        model = models[selected_model_name]
-        dates, predictions = make_predictions(model, feature_names)
+    min_date, max_date = data.index.min(), data.index.max()
+    start_date = st.sidebar.date_input('Start Date', min_date, min_value=min_date, max_value=max_date)
+    end_date = st.sidebar.date_input('End Date', min_date, min_value=min_date, max_value=max_date)
 
-        if dates is not None and predictions is not None:
-            forecast_df = pd.DataFrame({
-                'Date': pd.to_datetime(dates),
-                'Predicted Usage': predictions
-            })
-            forecast_df.set_index('Date', inplace=True)
-            aggregated_df = aggregate_predictions(forecast_df, aggregation)
-            cost_df = calculate_costs(aggregated_df.copy(), cost_per_kwh)
-
-            # Plot for Energy Usage
-            st.subheader('Forecast Results for Energy Usage')
-            plt.figure(figsize=(10, 5))
-            plt.plot(aggregated_df.index, aggregated_df['Predicted Usage'], label='Energy Usage (kWh)')
-            plt.xlabel('Date')
-            plt.ylabel('Energy Usage (kWh)')
-            plt.title(f'Energy Usage from {start_date} to {end_date} - Aggregated {aggregation}')
-            plt.legend()
-            st.pyplot(plt)
-
-            # Plot for Cost
-            st.subheader('Forecast Results with Cost Analysis')
-            plt.figure(figsize=(10, 5))
-            plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost')
-            plt.xlabel('Date')
-            plt.ylabel('Cost ($)')
-            plt.title(f'Cost from {start_date} to {end_date} - Aggregated {aggregation}')
-            plt.legend()
-            st.pyplot(plt)
-            st.write(cost_df)
-        else:
-            st.error("Failed to generate predictions. Please check the model and input features.")
+    if start_date > end_date:
+        st.sidebar.error('Error: End date must be after start date.')
 
     if st.sidebar.button('Predict Uploaded Data'):
-        try:
-            prepared_data = add_features(data)
-            predictions = make_predictions(models[selected_model_name], prepared_data.drop(columns=[energy_column]))
-            if predictions[0] is not None:
-                prepared_data['Predictions'] = predictions[1]
+        filtered_data = data[start_date:end_date]
+        if not filtered_data.empty:
+            model = models[selected_model_name]
+            features = filtered_data.drop(columns=['Energy Consumption'])
+            dates, predictions = make_predictions(model, features)
+            
+            if predictions is not None:
+                filtered_data['Predicted Usage'] = predictions
+                cost_df = calculate_costs(filtered_data, cost_per_kwh)
+                
                 st.write("Predictions on Uploaded Data:")
-                st.write(prepared_data)
-        except Exception as e:
-            st.error(f"Failed to predict on uploaded data: {str(e)}")
+                st.write(filtered_data[['Energy Consumption', 'Predicted Usage', 'Cost']])
+
+                # Plotting results
+                st.subheader('Forecast Results for Energy Usage')
+                plt.figure(figsize=(10, 5))
+                plt.plot(filtered_data.index, filtered_data['Energy Consumption'], label='Actual Energy Usage (kWh)')
+                plt.plot(filtered_data.index, filtered_data['Predicted Usage'], label='Predicted Usage (kWh)', linestyle='--')
+                plt.xlabel('Date')
+                plt.ylabel('Energy Usage (kWh)')
+                plt.title('Comparison of Actual and Predicted Energy Usage')
+                plt.legend()
+                st.pyplot(plt)
+
+                # Cost plot
+                st.subheader('Forecast Results with Cost Analysis')
+                plt.figure(figsize=(10, 5))
+                plt.plot(cost_df.index, cost_df['Cost'], label='Forecasted Cost', color='red')
+                plt.xlabel('Date')
+                plt.ylabel('Cost ($)')
+                plt.title('Cost Analysis of Predicted Energy Usage')
+                plt.legend()
+                st.pyplot(plt)
+            else:
+                st.error("Failed to generate predictions. Please check the model and input features.")
+        else:
+            st.error("No data available for the selected date range. Please choose a different range.")
+
+
+
 
 
