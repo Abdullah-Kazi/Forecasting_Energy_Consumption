@@ -17,7 +17,7 @@ To run the Energy Forecasting Dashboard locally, follow these steps:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/energy-forecasting-dashboard.git
+   git clone [https://github.com/your-username/energy-forecasting-dashboard.git](https://github.com/Abdullah-Kazi/Forecasting_Energy_Consumption.git)
    ```
 
 2. Navigate to the project directory:
